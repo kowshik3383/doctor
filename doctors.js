@@ -4,7 +4,7 @@ const mysql = require('mysql2/promise');
 const router = express.Router();
 const dotnenv = require('dotenv');
 dotnenv.config()
-// Create a connection pool
+// Create a connection 
 const pool = mysql.createPool({
   host: process.env.DB_HOST,
   user: process.env.DB_USER,
