@@ -126,76 +126,7 @@ app.post("/detect-and-translate", async (req, res) => {
 });
 
 // Read Notes
-app.get("/notes", (req, res) => {
-    db.query("SELECT * FROM notes", (err, results) => {
-        if (err) {
-            console.error("Error fetching notes:", err);
-            return res.status(500).json({ error: "Database error" });
-        }
-        res.json(results);
-    });
-});
 
-// Update Note
-app.put("/notes/:id", (req, res) => {
-    const { id } = req.params;
-    const { text } = req.body;
-
-    db.query("UPDATE notes SET original_text = ? WHERE id = ?", [text, id], (err) => {
-        if (err) {
-            console.error("Error updating note:", err);
-            return res.status(500).json({ error: "Database error" });
-        }
-        res.json({ message: "Note updated successfully" });
-    });
-});
-
-// Delete Note
-app.delete("/notes/:id", (req, res) => {
-    const { id } = req.params;
-
-    db.query("DELETE FROM notes WHERE id = ?", [id], (err) => {
-        if (err) {
-            console.error("Error deleting note:", err);
-            return res.status(500).json({ error: "Database error" });
-        }
-        res.json({ message: "Note deleted successfully" });
-    });
-});
-app.post('/generate-prescription', async (req, res) => {
-    const { notes } = req.body;
-  
-    // Construct the prompt for OpenAI API based on the notes
-    const prompt = `
-      Based on the following medical notes, create a prescription:
-  
-      ${notes.map(note => `Section: ${note.section}\nTranscript: ${note.transcript}\nTranslation: ${note.translatedText}`).join('\n\n')}
-    `;
-  
-    try {
-      const response = await axios.post(
-        'https://api.openai.com/v1/completions',
-        {
-          model: 'gpt-3.5-turbo-instruct',
-          prompt: prompt,
-          max_tokens: 500,
-        },
-        {
-          headers: {
-            'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-  
-      const prescription = response.data.choices[0].text.trim();
-      res.json({ prescription });
-    } catch (error) {
-      console.error('Error generating prescription:', error);
-      res.status(500).json({ error: 'Failed to generate prescription' });
-    }
-  });
-  
 
 // Register User
 app.post('/register/user', upload.single('profilePic'), async (req, res) => {
