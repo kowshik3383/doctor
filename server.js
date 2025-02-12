@@ -5,6 +5,8 @@ const bcrypt = require('bcryptjs'); // Import bcrypt
 const path = require('path'); // To handle file extension
 const app = express();
 const PORT = 3000;
+const axios = require('axios');
+
 // const doctorsRoutes = require('./doctors'); // Import the doctors route file
 const dotnenv = require('dotenv');
 dotnenv.config()
