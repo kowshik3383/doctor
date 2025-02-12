@@ -10,6 +10,8 @@ const dotnenv = require('dotenv');
 dotnenv.config()
 const cors = require('cors');
 app.use(cors());
+const GOOGLE_TRANSLATION_API_KEY = process.env.GOOGLE_TRANSLATION_API_KEY;
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
 // Configure multer for profile pictures with validation and renaming to .jpg
 const storage = multer.diskStorage({                  
@@ -58,6 +60,140 @@ db.connect(err => {
 
 app.use(express.json());
 
+
+// Utility function to format timestamp properly
+const getFormattedTimestamp = () => {
+    return new Date().toISOString().slice(0, 19).replace("T", " ");
+};
+
+// Function to retry requests in case of rate limits
+const retryRequest = async (url, data, headers, retries = 3, delay = 1000) => {
+    try {
+        const response = await axios.post(url, data, { headers });
+        return response;
+    } catch (error) {
+        if (error.response && error.response.status === 429 && retries > 0) {
+            console.log(`Rate limit exceeded. Retrying in ${delay / 1000} seconds...`);
+            await new Promise((resolve) => setTimeout(resolve, delay));
+            return retryRequest(url, data, headers, retries - 1, delay * 2);
+        }
+        throw error;
+    }
+};
+
+// Create Note (Detect & Translate)
+app.post("/detect-and-translate", async (req, res) => {
+    const { text, targetLanguage } = req.body;
+
+    if (!text || !targetLanguage) {
+        return res.status(400).json({ error: "Both 'text' and 'targetLanguage' are required." });
+    }
+
+    try {
+        const detectUrl = `https://translation.googleapis.com/language/translate/v2/detect?key=${GOOGLE_TRANSLATION_API_KEY}`;
+        const detectResponse = await axios.post(detectUrl, { q: text });
+
+        const detectedLanguage = detectResponse.data.data.detections[0][0].language;
+
+        const translateUrl = `https://translation.googleapis.com/language/translate/v2?key=${GOOGLE_TRANSLATION_API_KEY}`;
+        const translateResponse = await axios.post(translateUrl, {
+            q: text,
+            source: detectedLanguage,
+            target: targetLanguage,
+            format: "text",
+        });
+
+        const translatedText = translateResponse.data.data.translations[0].translatedText;
+        const timestamp = getFormattedTimestamp(); // Fixing timestamp format issue
+
+        db.query(
+            "INSERT INTO notes (timestamp, original_text, translated_text) VALUES (?, ?, ?)",
+            [timestamp, text, translatedText],
+            (err) => {
+                if (err) {
+                    console.error("Error inserting into MySQL:", err);
+                    return res.status(500).json({ error: "Database error" });
+                }
+                res.json({ detectedLanguage, translatedText });
+            }
+        );
+    } catch (error) {
+        console.error("Error in translation or detection:", error);
+        res.status(500).json({ error: "An error occurred during language detection or translation." });
+    }
+});
+
+// Read Notes
+app.get("/notes", (req, res) => {
+    db.query("SELECT * FROM notes", (err, results) => {
+        if (err) {
+            console.error("Error fetching notes:", err);
+            return res.status(500).json({ error: "Database error" });
+        }
+        res.json(results);
+    });
+});
+
+// Update Note
+app.put("/notes/:id", (req, res) => {
+    const { id } = req.params;
+    const { text } = req.body;
+
+    db.query("UPDATE notes SET original_text = ? WHERE id = ?", [text, id], (err) => {
+        if (err) {
+            console.error("Error updating note:", err);
+            return res.status(500).json({ error: "Database error" });
+        }
+        res.json({ message: "Note updated successfully" });
+    });
+});
+
+// Delete Note
+app.delete("/notes/:id", (req, res) => {
+    const { id } = req.params;
+
+    db.query("DELETE FROM notes WHERE id = ?", [id], (err) => {
+        if (err) {
+            console.error("Error deleting note:", err);
+            return res.status(500).json({ error: "Database error" });
+        }
+        res.json({ message: "Note deleted successfully" });
+    });
+});
+app.post('/generate-prescription', async (req, res) => {
+    const { notes } = req.body;
+  
+    // Construct the prompt for OpenAI API based on the notes
+    const prompt = `
+      Based on the following medical notes, create a prescription:
+  
+      ${notes.map(note => `Section: ${note.section}\nTranscript: ${note.transcript}\nTranslation: ${note.translatedText}`).join('\n\n')}
+    `;
+  
+    try {
+      const response = await axios.post(
+        'https://api.openai.com/v1/completions',
+        {
+          model: 'gpt-3.5-turbo-instruct',
+          prompt: prompt,
+          max_tokens: 500,
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+  
+      const prescription = response.data.choices[0].text.trim();
+      res.json({ prescription });
+    } catch (error) {
+      console.error('Error generating prescription:', error);
+      res.status(500).json({ error: 'Failed to generate prescription' });
+    }
+  });
+  
 
 // Register User
 app.post('/register/user', upload.single('profilePic'), async (req, res) => {
