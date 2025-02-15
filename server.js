@@ -139,10 +139,10 @@ app.post("/generate-prescription", async (req, res) => {
         const response = await axios.post(
             "https://api.openai.com/v1/chat/completions",
             {
-                model: "gpt-4o-mini",  
+                model: "gpt-4o-mini",
                 messages: [
-                    { role: "system", content: "You are a medical assistant that provides prescriptions." },
-                    { role: "user", content: `Based on the following symptoms, provide a medical prescription: ${text}` },
+                    { role: "system", content: "You are a medical assistant. Provide only the names and dosages of prescription tablets and medicines based on symptoms, without explanations or disclaimers." },
+                    { role: "user", content: `List only the prescription medicines for these symptoms: ${text}` },
                 ],
             },
             {
