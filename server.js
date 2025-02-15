@@ -69,6 +69,8 @@ const getFormattedTimestamp = () => {
 };
 
 // Function to retry requests in case of rate limits
+
+// Retry logic for API requests
 const retryRequest = async (url, data, headers, retries = 3, delay = 1000) => {
     try {
         const response = await axios.post(url, data, { headers });
@@ -83,7 +85,7 @@ const retryRequest = async (url, data, headers, retries = 3, delay = 1000) => {
     }
 };
 
-// Create Note (Detect & Translate)
+// Detect & Translate
 app.post("/detect-and-translate", async (req, res) => {
     const { text, targetLanguage } = req.body;
 
@@ -92,12 +94,13 @@ app.post("/detect-and-translate", async (req, res) => {
     }
 
     try {
-        const detectUrl = `https://translation.googleapis.com/language/translate/v2/detect?key=${GOOGLE_TRANSLATION_API_KEY}`;
+        // Detect language
+        const detectUrl = `https://translation.googleapis.com/language/translate/v2/detect?key=${process.env.GOOGLE_TRANSLATION_API_KEY}`;
         const detectResponse = await axios.post(detectUrl, { q: text });
-
         const detectedLanguage = detectResponse.data.data.detections[0][0].language;
 
-        const translateUrl = `https://translation.googleapis.com/language/translate/v2?key=${GOOGLE_TRANSLATION_API_KEY}`;
+        // Translate text
+        const translateUrl = `https://translation.googleapis.com/language/translate/v2?key=${process.env.GOOGLE_TRANSLATION_API_KEY}`;
         const translateResponse = await axios.post(translateUrl, {
             q: text,
             source: detectedLanguage,
@@ -106,7 +109,7 @@ app.post("/detect-and-translate", async (req, res) => {
         });
 
         const translatedText = translateResponse.data.data.translations[0].translatedText;
-        const timestamp = getFormattedTimestamp(); // Fixing timestamp format issue
+        const timestamp = getFormattedTimestamp();
 
         db.query(
             "INSERT INTO notes (timestamp, original_text, translated_text) VALUES (?, ?, ?)",
@@ -122,6 +125,43 @@ app.post("/detect-and-translate", async (req, res) => {
     } catch (error) {
         console.error("Error in translation or detection:", error);
         res.status(500).json({ error: "An error occurred during language detection or translation." });
+    }
+});
+
+app.post("/generate-prescription", async (req, res) => {
+    const { text } = req.body;
+
+    if (!text) {
+        return res.status(400).json({ error: "Text input is required" });
+    }
+
+    try {
+        const response = await axios.post(
+            "https://api.openai.com/v1/chat/completions",
+            {
+                model: "gpt-4o-mini",  
+                messages: [
+                    { role: "system", content: "You are a medical assistant that provides prescriptions." },
+                    { role: "user", content: `Based on the following symptoms, provide a medical prescription: ${text}` },
+                ],
+            },
+            {
+                headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY}` },
+            }
+        );
+
+        const prescription = response.data.choices[0]?.message?.content || "No prescription generated.";
+        res.json({ prescription });
+    } catch (error) {
+        console.error("OpenAI API error:", error?.response?.data || error);
+
+        if (error?.response?.data?.error?.code === "insufficient_quota") {
+            return res.status(403).json({ 
+                error: "API quota exceeded. Please try again later or contact support." 
+            });
+        }
+
+        res.status(500).json({ error: "Failed to generate prescription. Please try again later." });
     }
 });
 
