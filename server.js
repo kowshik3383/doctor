@@ -141,8 +141,8 @@ app.post("/generate-prescription", async (req, res) => {
             {
                 model: "gpt-4o-mini",
                 messages: [
-                    { role: "system", content: "You are a medical assistant. Provide only the names and dosages of prescription tablets and medicines based on symptoms, without explanations or disclaimers." },
-                    { role: "user", content: `List only the prescription medicines for these symptoms: ${text}` },
+                    { role: "system", content: "You are a medical assistant. Provide prescription medicines along with recommended treatments based on symptoms. Include medicine names, dosages, and treatment suggestions, but avoid unnecessary explanations or disclaimers." },
+                    { role: "user", content: `Provide a prescription and recommended treatment for these symptoms: ${text}` },
                 ],
             },
             {
@@ -164,7 +164,6 @@ app.post("/generate-prescription", async (req, res) => {
         res.status(500).json({ error: "Failed to generate prescription. Please try again later." });
     }
 });
-
 // Read Notes
 
 
