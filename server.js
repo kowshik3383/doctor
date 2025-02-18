@@ -141,8 +141,14 @@ app.post("/generate-prescription", async (req, res) => {
             {
                 model: "gpt-4o-mini",
                 messages: [
-                    { role: "system", content: "You are a medical assistant. Provide prescription medicines along with recommended treatments based on symptoms. Include medicine names, dosages, and treatment suggestions, but avoid unnecessary explanations or disclaimers." },
-                    { role: "user", content: `Provide a prescription and recommended treatment for these symptoms: ${text}` },
+                    { 
+                        role: "system", 
+                        content: "You are a medical assistant. Provide multiple possible prescriptions along with recommended treatments based on symptoms. Each prescription should include medicine names, dosages, and alternative treatment suggestions. Avoid unnecessary explanations or disclaimers." 
+                    },
+                    { 
+                        role: "user", 
+                        content: `Provide multiple possible prescriptions and recommended treatments for these symptoms: ${text}` 
+                    },
                 ],
             },
             {
@@ -150,8 +156,8 @@ app.post("/generate-prescription", async (req, res) => {
             }
         );
 
-        const prescription = response.data.choices[0]?.message?.content || "No prescription generated.";
-        res.json({ prescription });
+        const prescriptions = response.data.choices[0]?.message?.content || "No prescription generated.";
+        res.json({ prescriptions });
     } catch (error) {
         console.error("OpenAI API error:", error?.response?.data || error);
 
@@ -164,6 +170,7 @@ app.post("/generate-prescription", async (req, res) => {
         res.status(500).json({ error: "Failed to generate prescription. Please try again later." });
     }
 });
+
 // Read Notes
 
 
