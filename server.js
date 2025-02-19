@@ -141,8 +141,14 @@ app.post("/generate-prescription", async (req, res) => {
             {
                 model: "gpt-4o-mini",
                 messages: [
-                    { role: "system", content: "You are a medical assistant. Provide prescription medicines along with recommended treatments based on symptoms. Include medicine names, dosages, and treatment suggestions, but avoid unnecessary explanations or disclaimers." },
-                    { role: "user", content: `Provide a prescription and recommended treatment for these symptoms: ${text}` },
+                    { 
+                        role: "system", 
+                        content: "You are a medical assistant. Based on the symptoms provided, generate a response in the following format: \n\n- Prescription: List medicine names and dosages.\n- Recommended Treatment: Provide treatment recommendations.\n- Potential Dangers: Summarize any risks if untreated or if the prescription is misused.\n- Side Effects: List possible side effects of the prescription in a separate paragraph." 
+                    },
+                    { 
+                        role: "user", 
+                        content: `Provide a prescription, recommended treatment, potential dangers, and side effects for these symptoms: ${text}` 
+                    },
                 ],
             },
             {
