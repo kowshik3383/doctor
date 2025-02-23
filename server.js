@@ -172,7 +172,9 @@ app.post("/generate-prescription", async (req, res) => {
 });
 
 // Read Notes
-
+app.get('/', (req, res) => {
+  res.send('Hello');
+});
 
 // Register User
 app.post('/register/user', upload.single('profilePic'), async (req, res) => {
