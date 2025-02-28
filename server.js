@@ -522,6 +522,39 @@ app.get("/departments", (req, res) => {
     res.status(200).json(results);
   });
 });
+app.get("/api/hospitals", (req, res) => {
+  const sql = "SELECT * FROM doctors";
+  db.query(sql, (err, results) => {
+    if (err) {
+      return res.status(500).json({ error: err.message });
+    }
+    res.json(results);
+  });
+});
+app.get("/api/doctors", (req, res) => {
+  const sql = "SELECT * FROM users";
+  db.query(sql, (err, results) => {
+    if (err) {
+      return res.status(500).json({ error: err.message });
+    }
+    res.json(results);
+  });
+});
+ app.get("/api/counts", (req, res) => {
+  const sql = `
+    SELECT 
+      (SELECT COUNT(*) FROM users) AS total_users,
+      (SELECT COUNT(*) FROM doctors) AS total_doctors,
+      (SELECT COUNT(*) FROM hospitals) AS total_hospitals
+  `;
+
+  db.query(sql, (err, results) => {
+    if (err) {
+      return res.status(500).json({ error: err.message });
+    }
+    res.json(results[0]); // Sending the first row with counts
+  });
+});
 
 app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
